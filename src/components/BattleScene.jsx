@@ -31,9 +31,9 @@ export default function BattleScene({ world, stageId, customModels, customStage,
     // dynamic camera
     const [a,b]=world.fighters;
     const mid=(a.pos.x+b.pos.x)/2, sep=Math.abs(a.pos.x-b.pos.x);
-    const dist=clamp(13+sep*0.55, 13, 28);
-    camTarget.current.lerp(new THREE.Vector3(mid*0.6, 2.4, 0), 1-Math.pow(0.001, dt));
-    camPos.current.lerp(new THREE.Vector3(mid*0.5, 4.2+sep*0.1, dist), 1-Math.pow(0.0016, dt));
+    const dist=clamp(9+sep*0.5, 9, 22);
+    camTarget.current.lerp(new THREE.Vector3(mid*0.6, 2.2, 0), 1-Math.pow(0.001, dt));
+    camPos.current.lerp(new THREE.Vector3(mid*0.5, 3.4+sep*0.08, dist), 1-Math.pow(0.0016, dt));
     camera.position.set(camPos.current.x+world.shake.x, camPos.current.y+world.shake.y, camPos.current.z);
     camera.lookAt(camTarget.current);
 

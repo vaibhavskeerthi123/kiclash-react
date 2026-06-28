@@ -8,6 +8,20 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 export default function HUD({ world }){
   const canvasRef=useRef();
   const hudHp=useRef([1,1]);
+  const portraits=useRef({});   // id -> HTMLImageElement (or null while loading)
+
+  // preload placeholder portrait images for the two fighters
+  useEffect(()=>{
+    world.fighters.forEach(f=>{
+      const id=f.def.id;
+      if(portraits.current[id]!==undefined) return;
+      portraits.current[id]=null;
+      const img=new Image();
+      img.onload=()=>{ portraits.current[id]=img; };
+      img.onerror=()=>{ portraits.current[id]='missing'; };
+      img.src=`portraits/${id}.png`;   // drop your own at public/portraits/<id>.png
+    });
+  }, [world]);
 
   useEffect(()=>{
     const canvas=canvasRef.current;
@@ -17,9 +31,38 @@ export default function HUD({ world }){
       canvas.width=innerWidth*DPR; canvas.height=innerHeight*DPR; ux.setTransform(DPR,0,0,DPR,0,0); }
     resize();
     addEventListener('resize', resize);
-    // iOS often reports stale size right at orientationchange — re-measure after a tick
     const onOrient=()=>{ resize(); setTimeout(resize, 250); setTimeout(resize, 600); };
     addEventListener('orientationchange', onOrient);
+
+    // draw a character portrait box (image if present, else colored badge)
+    function drawPortrait(f, px, py, size){
+      const img=portraits.current[f.def.id];
+      ux.save();
+      // frame
+      ux.beginPath(); ux.rect(px,py,size,size);
+      ux.fillStyle='#0c1020'; ux.fill();
+      if(img && img!=='missing'){
+        // cover-fit the image
+        const ar=img.width/img.height; let dw=size,dh=size,dx=px,dy=py;
+        if(ar>1){ dh=size; dw=size*ar; dx=px-(dw-size)/2; } else { dw=size; dh=size/ar; dy=py-(dh-size)/2; }
+        ux.save(); ux.beginPath(); ux.rect(px,py,size,size); ux.clip();
+        ux.drawImage(img,dx,dy,dw,dh); ux.restore();
+      } else {
+        // placeholder badge: gradient + initial
+        const g=ux.createRadialGradient(px+size*0.4,py+size*0.35,2,px+size*0.5,py+size*0.5,size*0.7);
+        const c=f.def.body; g.addColorStop(0,'#fff'); g.addColorStop(0.55,`rgb(${c.map(v=>v*255|0).join(',')})`); g.addColorStop(1,'#0a0a14');
+        ux.fillStyle=g; ux.fillRect(px,py,size,size);
+        ux.fillStyle='rgba(255,255,255,.92)'; ux.font=`900 ${Math.round(size*0.5)}px Trebuchet MS`;
+        ux.textAlign='center'; ux.textBaseline='middle';
+        ux.fillText(f.def.name[0], px+size/2, py+size/2+1);
+        ux.textBaseline='alphabetic';
+      }
+      // border, glow with ki color
+      const kc=f.kiColor;
+      ux.strokeStyle=`rgb(${kc.map(v=>v*255|0).join(',')})`; ux.lineWidth=2.5;
+      ux.shadowColor=ux.strokeStyle; ux.shadowBlur=10; ux.strokeRect(px,py,size,size);
+      ux.restore();
+    }
 
     function skewBar(x,y,w,h,frac,fill,right,sk){
       ux.save(); ux.fillStyle=fill; ux.beginPath(); const fw=w*frac;
@@ -40,17 +83,21 @@ export default function HUD({ world }){
       const F=world.fighters;
       // responsive sizing: smaller bars + padding on narrow screens; reserve skew room
       const small = VW < 720;
-      const pad = small ? 10 : 20;
-      const skew = small ? 10 : 18;
-      const barH = small ? 16 : 24;
-      // width must leave room for pad on both sides AND the skew lean
-      const barW = Math.min(VW*0.42 - skew, 440);
+      const pad = small ? 8 : 18;
+      const skew = small ? 8 : 16;
+      const barH = small ? 14 : 22;
+      const portrait = small ? 38 : 60;     // character portrait box size
+      const gap = small ? 6 : 10;
+      // width must leave room for pad + portrait + skew on each side
+      const barW = Math.max(60, Math.min(VW*0.40 - skew - portrait - gap, 420));
       const tnow=performance.now()/1000;
       for(let s=0;s<2;s++){
         const f=F[s], right=s===1;
-        // left bar starts at pad+skew so its slanted edge stays on-screen; right ends at VW-pad
-        const x = right ? VW-pad-barW : pad;
+        // portrait sits at the outer edge; bars sit inward of it
+        const portX = right ? VW-pad-portrait : pad;
+        const x = right ? VW-pad-portrait-gap-barW : pad+portrait+gap;
         const y = pad;
+        drawPortrait(f, portX, y, portrait);
         const hpf=clamp(f.hp/f.maxhp,0,1); hudHp.current[s]=lerp(hudHp.current[s],hpf,0.12);
         // soft glow under the bar
         ux.save(); ux.shadowColor='rgba(60,200,255,.5)'; ux.shadowBlur=small?6:14;
@@ -79,10 +126,11 @@ export default function HUD({ world }){
           ux.fillStyle=on?'#ffd23f':'rgba(255,255,255,.14)';
           ux.beginPath(); ux.ellipse(bx+sw/2,y+barH+24,sw*0.32,5,0,0,TAU); ux.fill();
           if(on) ux.restore(); }
-        // name + ready-to-ult indicator
-        ux.fillStyle='#fff'; ux.font=`900 ${small?13:19}px Trebuchet MS`; ux.textAlign=right?'right':'left';
+        // name + ready-to-ult indicator (anchored to the bar's inner edge)
+        ux.fillStyle='#fff'; ux.font=`900 ${small?12:18}px Trebuchet MS`; ux.textAlign=right?'right':'left';
         const label=f.def.name+(f.transformed?' \u26a1':'')+(f.blast>=100?'  \u25c6 ULT':'');
-        ux.fillText(label, right?VW-pad:pad, y+barH+(small?34:50));
+        const nameX = right ? VW-pad-portrait-gap : pad+portrait+gap;
+        ux.fillText(label, nameX, y+barH+(small?30:48));
       }
       // timer node
       ux.fillStyle='#0d1830'; ux.beginPath(); ux.arc(VW/2,pad+16,18,0,TAU); ux.fill();

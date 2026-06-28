@@ -15,7 +15,8 @@ const isTouch = (typeof window!=='undefined') &&
   ('ontouchstart' in window || navigator.maxTouchPoints>0);
 
 export default function App(){
-  const [scene,setScene]=useState('title');   // title | select | stage | battle | pause | result
+  const [scene,setScene]=useState('loading');   // loading | title | select | stage | battle | pause | result
+  const [loadProgress,setLoadProgress]=useState({ done:0, total:0, label:'Starting…' });
   const [world,setWorld]=useState(null);
   const [stageId,setStageId]=useState('wasteland');
   const [winner,setWinner]=useState(null);
@@ -49,55 +50,62 @@ export default function App(){
     if(world) world.paused = (scene==='pause');
   }, [scene, world]);
 
-  // auto-load fighters from /models and stages from /stages when served over http
+  // auto-load fighters/stages/animations, tracking progress for the loading screen
   useEffect(()=>{
     (async()=>{
       const okBinary = (head)=>{
         const ct=(head.headers.get('content-type')||'');
-        return head.ok && !ct.includes('text/html'); // ignore dev-server SPA html fallback
+        return head.ok && !ct.includes('text/html');
       };
+      // total steps = fighters + stages + anim sets
+      const total = ROSTER.length + 3 + ROSTER.length;
+      let done = 0;
+      const step = (label)=>{ done++; setLoadProgress({ done, total, label }); };
+      setLoadProgress({ done:0, total, label:'Loading fighters…' });
+
       const loaded={};
       for(const c of ROSTER){
+        setLoadProgress(p=>({ ...p, label:`Loading fighter: ${c.name}` }));
+        let got=false;
         for(const ext of ['glb','fbx']){
           const url=`models/${c.id}.${ext}`;
           try{ const head=await fetch(url,{method:'HEAD'});
-            if(okBinary(head)){ loaded[c.id]=await loadFighterModel(url); showToast(`Loaded fighter ${c.id}.${ext}`); break; }
+            if(okBinary(head)){ loaded[c.id]=await loadFighterModel(url); got=true; break; }
           }catch(_){}
         }
+        step(got?`Loaded ${c.name}`:`${c.name}: using default`);
       }
       if(Object.keys(loaded).length) setCustomModels(m=>({ ...m, ...loaded }));
 
-      // stages: stages/<wasteland|lava|island>.glb  (background 3D model)
       const stages={};
       for(const id of ['wasteland','lava','island']){
+        setLoadProgress(p=>({ ...p, label:`Loading stage: ${id}` }));
         for(const ext of ['glb','fbx']){
           const url=`stages/${id}.${ext}`;
           try{ const head=await fetch(url,{method:'HEAD'});
-            if(okBinary(head)){ stages[id]=await loadFighterModel(url); showToast(`Loaded stage ${id}.${ext}`); break; }
+            if(okBinary(head)){ stages[id]=await loadFighterModel(url); break; }
           }catch(_){}
         }
+        step(`Stage: ${id}`);
       }
       if(Object.keys(stages).length) setCustomStages(s=>({ ...s, ...stages }));
 
-      // animations: models/<id>_anims/<idle|walk|punch|kick|...>.fbx (Mixamo exports)
       const clips={};
       for(const c of ROSTER){
+        setLoadProgress(p=>({ ...p, label:`Loading animations: ${c.name}` }));
         try{
           const { clips:set, log } = await autoLoadClips(c.id);
           const names = Object.keys(set);
-          if(names.length){
-            clips[c.id] = Object.values(set);
-            showToast(`Loaded ${names.length} animations for ${c.id}: ${names.join(', ')}`);
-          }
+          if(names.length) clips[c.id] = Object.values(set);
           console.log(`[anim-load] ${c.id}:`, log);
-          // expose load log for the on-screen diagnostic panel
-          if(typeof window!=='undefined'){
-            window.__animLoad = window.__animLoad || {};
-            window.__animLoad[c.id] = log;
-          }
+          if(typeof window!=='undefined'){ window.__animLoad = window.__animLoad || {}; window.__animLoad[c.id] = log; }
         }catch(err){ console.warn(`[anim-load] ${c.id} failed`, err); }
+        step(`Animations: ${c.name}`);
       }
       if(Object.keys(clips).length) setCustomClips(cl=>({ ...cl, ...clips }));
+
+      setLoadProgress(p=>({ ...p, done:total, label:'Ready!' }));
+      setTimeout(()=>setScene('title'), 400);
     })();
   }, []);
 
@@ -166,6 +174,16 @@ export default function App(){
 
       {/* on-screen controls during battle on touch devices */}
       <TouchControls enabled={isTouch && scene==='battle'} onPause={()=>setScene('pause')} />
+
+      {scene==='loading' && (
+        <div className="screen title-bg loading-screen">
+          <div className="logo">KI&nbsp;CLASH<span className="sub">TENKAICHI ARENA</span></div>
+          <div className="load-bar"><div className="load-fill" style={{
+            width: `${loadProgress.total ? Math.round(loadProgress.done/loadProgress.total*100) : 0}%` }} /></div>
+          <div className="load-label">{loadProgress.label}</div>
+          <div className="load-pct">{loadProgress.total ? Math.round(loadProgress.done/loadProgress.total*100) : 0}%</div>
+        </div>
+      )}
 
       {scene==='title' && (
         <div className="screen title-bg" onClick={()=>setScene('select')}>
