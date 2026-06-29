@@ -27,8 +27,13 @@ export default function HUD({ world }){
     const canvas=canvasRef.current;
     const ux=canvas.getContext('2d');
     let raf, DPR=Math.min(devicePixelRatio||1,2);
+    // size from the canvas's own client box (set by CSS to fill the viewport).
+    // Falls back to innerWidth if the box hasn't laid out yet.
+    let CW=innerWidth, CH=innerHeight;
     function resize(){ DPR=Math.min(devicePixelRatio||1,2);
-      canvas.width=innerWidth*DPR; canvas.height=innerHeight*DPR; ux.setTransform(DPR,0,0,DPR,0,0); }
+      const r=canvas.getBoundingClientRect();
+      CW=Math.round(r.width)||innerWidth; CH=Math.round(r.height)||innerHeight;
+      canvas.width=CW*DPR; canvas.height=CH*DPR; ux.setTransform(DPR,0,0,DPR,0,0); }
     resize();
     addEventListener('resize', resize);
     const onOrient=()=>{ resize(); setTimeout(resize, 250); setTimeout(resize, 600); };
@@ -78,7 +83,7 @@ export default function HUD({ world }){
     }
 
     function draw(){
-      const VW=innerWidth, VH=innerHeight;
+      const VW=CW, VH=CH;
       ux.clearRect(0,0,VW,VH);
       const F=world.fighters;
       // responsive sizing: smaller bars + padding on narrow screens; reserve skew room

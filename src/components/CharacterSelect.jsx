@@ -1,49 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ROSTER } from '../game/roster.js';
-import CharacterPortrait from './CharacterPortrait.jsx'; // used by the big render panels
+import CharacterPortrait from './CharacterPortrait.jsx';
 
-const TAU=Math.PI*2;
 const rgb=c=>`rgb(${c.map(v=>v*255|0).join(',')})`;
 
-// circular token in the wheel. Uses a CHEAP representation (no live 3D canvas)
-// so the select screen doesn't spawn many WebGL contexts and crash with
-// "Context Lost". Live 3D is reserved for the two big render panels.
-function Token({ def, customModels, selected, onClick, onHover }){
+// Token = a small PLACEHOLDER IMAGE (public/portraits/<id>.png) if present,
+// else a colored badge with the initial. NOT a 3D viewer (those are heavy).
+function Token({ def, selected, onClick, onHover }){
+  const [hasImg,setHasImg]=useState(false);
+  useEffect(()=>{
+    const img=new Image();
+    img.onload=()=>setHasImg(true);
+    img.onerror=()=>setHasImg(false);
+    img.src=`portraits/${def.id}.png`;
+  },[def.id]);
   return (
-    <div className={`tok${selected?' sel':''}`} style={{ '--kc':rgb(def.ki) }}
+    <button className={`tok${selected?' sel':''}`} style={{ '--kc':rgb(def.ki) }}
          onClick={onClick} onMouseEnter={onHover}>
-      <div className="tok-badge"
-        style={{ background:`radial-gradient(circle at 38% 32%, #fff, ${rgb(def.body)} 62%, rgba(0,0,0,.4))` }}>
-        <span className="tok-letter">{def.name[0]}</span>
-      </div>
-    </div>
+      {hasImg
+        ? <img className="tok-img" src={`portraits/${def.id}.png`} alt={def.name} />
+        : <div className="tok-badge"
+            style={{ background:`radial-gradient(circle at 38% 32%, #fff, ${rgb(def.body)} 62%, rgba(0,0,0,.4))` }}>
+            <span className="tok-letter">{def.name[0]}</span>
+          </div>}
+    </button>
   );
 }
 
-// arc of tokens down one side of the screen (like the reference wheel halves)
-function TokenArc({ side, selected, locked, onPick, onHover, onLeave, customModels }){
-  const n=ROSTER.length;
-  return (
-    <div className={`arc ${side}`} onMouseLeave={onLeave}>
-      {ROSTER.map((c,idx)=>{
-        // place tokens on a vertical arc; left side bulges right, right side bulges left
-        const t = n>1 ? idx/(n-1) : 0.5;            // 0..1 top->bottom
-        const ang = (t-0.5) * 1.5;                  // radians spread
-        const bulge = side==='left' ? 1 : -1;
-        const cx = 50 + bulge * Math.cos(ang) * 16; // % from arc container center
-        const cy = 50 + Math.sin(ang) * 42;
-        return (
-          <div key={c.id} className="tok-slot" style={{ left:`${cx}%`, top:`${cy}%` }}>
-            <Token def={c} customModels={customModels} selected={selected===idx}
-              onClick={()=>onPick(idx)} onHover={()=>onHover && onHover(idx)} />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// big framed render of the shown character on each side
+// Big side panel = LIVE 3D MODEL VIEWER of the shown character.
 function RenderPanel({ side, idx, customModels }){
   const def = idx!=null ? ROSTER[idx] : null;
   return (
@@ -75,46 +59,60 @@ export default function CharacterSelect({ onDone, customModels, onAssignModel })
     if(phase===0){ setP1(idx); setPhase(1); setHoverL(null); }
     else { setP2(idx); setHoverR(null); }
   }
-  // once locked, hover does NOT change the shown render
   const leftShow  = p1!=null ? p1 : hoverL;
   const rightShow = p2!=null ? p2 : hoverR;
 
   return (
-    <div className="screen select-bg cs-layout">
-      <div className="seltitle">SELECT CHARACTERS</div>
+    <div className="screen select-bg cs-grid" style={{ backgroundImage:'url(/backgrounds/select.jpg)' }}>
+      <div className="bg-dim" />
 
-      <div className="nametag p1"><small>1P</small>{p1!=null?ROSTER[p1].name:'—'}</div>
-      <div className="nametag p2"><small>2P · COM</small>{p2!=null?ROSTER[p2].name:'—'}</div>
+      {/* row 1: title */}
+      <div className="cs-title-row">
+        <div className="nametag p1"><small>1P</small>{p1!=null?ROSTER[p1].name:'—'}</div>
+        <div className="seltitle">SELECT CHARACTERS</div>
+        <div className="nametag p2"><small>2P · COM</small>{p2!=null?ROSTER[p2].name:'—'}</div>
+      </div>
 
-      {/* left half: P1 render + token arc */}
-      <RenderPanel side="left"  idx={leftShow}  customModels={customModels} />
-      <TokenArc side="left"  selected={p1} locked={p1!=null} onPick={pick}
-        onHover={(i)=>{ if(p1==null) setHoverL(i); }} onLeave={()=>setHoverL(null)} customModels={customModels} />
+      {/* row 2: [P1 panel] [P1 tokens] [VS] [P2 tokens] [P2 panel] */}
+      <div className="cs-main">
+        <RenderPanel side="left" idx={leftShow} customModels={customModels} />
 
-      <div className="vs">VS</div>
+        <div className="tok-col">
+          {ROSTER.map((c,idx)=>(
+            <Token key={c.id} def={c} selected={p1===idx}
+              onClick={()=>pick(idx)} onHover={()=>{ if(p1==null) setHoverL(idx); }} />
+          ))}
+        </div>
 
-      {/* right half: P2 render + token arc */}
-      <TokenArc side="right" selected={p2} locked={p2!=null} onPick={pick}
-        onHover={(i)=>{ if(p2==null) setHoverR(i); }} onLeave={()=>setHoverR(null)} customModels={customModels} />
-      <RenderPanel side="right" idx={rightShow} customModels={customModels} />
+        <div className="vs">VS</div>
 
-      <div className="cs-bottom">
+        <div className="tok-col">
+          {ROSTER.map((c,idx)=>(
+            <Token key={c.id} def={c} selected={p2===idx}
+              onClick={()=>pick(idx)} onHover={()=>{ if(p2==null) setHoverR(idx); }} />
+          ))}
+        </div>
+
+        <RenderPanel side="right" idx={rightShow} customModels={customModels} />
+      </div>
+
+      {/* row 3: model-assign + actions */}
+      <div className="cs-footer">
         <div className="model-menu">
           {ROSTER.map(c=>(
             <div key={c.id} className={`mbtn${armed===c.id?' armed':''}`}
-                 title="Click, then drop a .glb/.fbx to assign it to this fighter"
                  onClick={()=>{ setArmed(c.id); onAssignModel && onAssignModel(c.id); }}>
               {customModels[c.id]?'✓ ':''}Model → {c.name}
             </div>
           ))}
         </div>
-        <div className="selhint">
-          {phase===0 ? 'Player 1: pick a fighter' : (p2==null ? 'Player 2 (CPU): pick a fighter' : 'Ready!')}
-          {' · '}drop a .glb/.fbx to add your own
-        </div>
         <div className="sel-actions">
           {(p1!=null) && <button className="startbtn ghost-btn" onClick={()=>{ setP1(null); setP2(null); setPhase(0); }}>RESET</button>}
           {(p1!=null && p2!=null) && <button className="startbtn" onClick={()=>onDone({ p1, p2 })}>NEXT: STAGE →</button>}
+        </div>
+        <div className="selhint">
+          {phase===0 ? 'Player 1: pick a fighter' : (p2==null ? 'Player 2 (CPU): pick a fighter' : 'Ready! Press NEXT')}
+          {' · '}drop a .glb/.fbx to add your own
         </div>
       </div>
     </div>

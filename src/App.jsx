@@ -9,6 +9,7 @@ import StageSelect from './components/StageSelect.jsx';
 import BattleScene from './components/BattleScene.jsx';
 import HUD from './components/HUD.jsx';
 import TouchControls from './components/TouchControls.jsx';
+import AudioManager from './components/AudioManager.jsx';
 
 const rgb=c=>`rgb(${c.map(v=>v*255|0).join(',')})`;
 const isTouch = (typeof window!=='undefined') &&
@@ -27,6 +28,7 @@ export default function App(){
   const [toast,setToast]=useState('');
   const [matchKey,setMatchKey]=useState(0);   // bump to force a clean BattleScene remount
   const [showAnimDiag,setShowAnimDiag]=useState(false);
+  const [muted,setMuted]=useState(false);
   const armedRef=useRef(null);
   const pendingPick=useRef({p1:0,p2:1});   // remembers character picks between select -> stage
   const lastPick=useRef({ p1:0, p2:1, stage:'wasteland' });
@@ -158,10 +160,16 @@ export default function App(){
     <>
       {/* 3D canvas only mounts during battle/pause/result so the world exists */}
       {world && (
-        <Canvas shadows camera={{ fov:55, position:[0,5,18] }}
-          gl={{ antialias:true, powerPreference:'high-performance' }}
-          dpr={[1, isTouch ? 1.5 : 2]}
-          style={{ position:'fixed', inset:0 }}>
+        <Canvas shadows={!isTouch} camera={{ fov:55, position:[0,5,18] }}
+          gl={{ antialias:!isTouch, powerPreference:'default', failIfMajorPerformanceCaveat:false, preserveDrawingBuffer:false }}
+          dpr={[1, isTouch ? 1.25 : 2]}
+          resize={{ scroll:false, debounce:{ scroll:0, resize:80 } }}
+          style={{ position:'fixed', top:0, left:0, width:'100vw', height:'100vh' }}
+          onCreated={({ gl })=>{
+            const canvas=gl.domElement;
+            canvas.addEventListener('webglcontextlost', (e)=>{ e.preventDefault(); console.warn('WebGL context lost — will restore'); }, false);
+            canvas.addEventListener('webglcontextrestored', ()=>{ console.warn('WebGL context restored'); }, false);
+          }}>
           <BattleScene key={matchKey} world={world} stageId={stageId} customModels={customModels}
             customStage={customStages[stageId]} customClips={customClips} onEnd={onEnd} />
         </Canvas>
@@ -175,9 +183,17 @@ export default function App(){
       {/* on-screen controls during battle on touch devices */}
       <TouchControls enabled={isTouch && scene==='battle'} onPause={()=>setScene('pause')} />
 
+      {/* scene-based music (files in public/audio/, swappable) */}
+      <AudioManager scene={scene} muted={muted} volume={0.5} />
+      {scene!=='loading' && (
+        <button className="mute-btn" onClick={()=>setMuted(m=>!m)}
+          title={muted?'Unmute':'Mute'}>{muted?'🔇':'🔊'}</button>
+      )}
+
       {scene==='loading' && (
-        <div className="screen title-bg loading-screen">
-          <div className="logo">KI&nbsp;CLASH<span className="sub">TENKAICHI ARENA</span></div>
+        <div className="screen title-bg loading-screen" style={{ backgroundImage:'url(/backgrounds/title.jpg)' }}>
+          <div className="bg-dim" />
+          <div className="logo logo-bbb">BANG BANG<span className="sub">BANGALORE</span></div>
           <div className="load-bar"><div className="load-fill" style={{
             width: `${loadProgress.total ? Math.round(loadProgress.done/loadProgress.total*100) : 0}%` }} /></div>
           <div className="load-label">{loadProgress.label}</div>
@@ -186,8 +202,10 @@ export default function App(){
       )}
 
       {scene==='title' && (
-        <div className="screen title-bg" onClick={()=>setScene('select')}>
-          <div className="logo">KI&nbsp;CLASH<span className="sub">TENKAICHI ARENA</span></div>
+        <div className="screen title-bg" onClick={()=>setScene('select')}
+             style={{ backgroundImage:'url(/backgrounds/title.jpg)' }}>
+          <div className="bg-dim" />
+          <div className="logo logo-bbb">BANG BANG<span className="sub">BANGALORE</span></div>
           <div className="prompt">PRESS ENTER / TAP TO BEGIN</div>
           <div className="hint">
             P1: WASD move · J/K light/heavy · L blast · O rush · U charge · I block · Space jump/dash · T transform · P ultimate
