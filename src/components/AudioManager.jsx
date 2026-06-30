@@ -8,6 +8,7 @@ const TRACKS = {
   title:   'audio/title.mp3',
   select:  'audio/select.mp3',
   stage:   'audio/select.mp3',
+  cutscene:'audio/battle.mp3',
   battle:  'audio/battle.mp3',
   pause:   'audio/select.mp3',
   result:  'audio/select.mp3',

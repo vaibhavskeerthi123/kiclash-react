@@ -96,23 +96,14 @@ export default function CharacterSelect({ onDone, customModels, onAssignModel })
         <RenderPanel side="right" idx={rightShow} customModels={customModels} />
       </div>
 
-      {/* row 3: model-assign + actions */}
+      {/* row 3: actions */}
       <div className="cs-footer">
-        <div className="model-menu">
-          {ROSTER.map(c=>(
-            <div key={c.id} className={`mbtn${armed===c.id?' armed':''}`}
-                 onClick={()=>{ setArmed(c.id); onAssignModel && onAssignModel(c.id); }}>
-              {customModels[c.id]?'✓ ':''}Model → {c.name}
-            </div>
-          ))}
-        </div>
         <div className="sel-actions">
           {(p1!=null) && <button className="startbtn ghost-btn" onClick={()=>{ setP1(null); setP2(null); setPhase(0); }}>RESET</button>}
           {(p1!=null && p2!=null) && <button className="startbtn" onClick={()=>onDone({ p1, p2 })}>NEXT: STAGE →</button>}
         </div>
         <div className="selhint">
           {phase===0 ? 'Player 1: pick a fighter' : (p2==null ? 'Player 2 (CPU): pick a fighter' : 'Ready! Press NEXT')}
-          {' · '}drop a .glb/.fbx to add your own
         </div>
       </div>
     </div>

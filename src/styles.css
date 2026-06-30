@@ -144,13 +144,13 @@ canvas{display:block;outline:none}
 .startbtn.ghost-btn{background:transparent;color:#cdd6ff;border:2px solid rgba(255,255,255,.25);box-shadow:none}
 
 /* ---- STAGE SELECT PAGE ---- */
-.stage-preview{position:fixed;top:84px;left:50%;transform:translateX(-50%);
+.stage-preview{
   width:min(70vw,640px);height:min(46vh,360px);border-radius:16px;overflow:hidden;
-  border:2px solid rgba(255,255,255,.15);box-shadow:0 16px 50px rgba(0,0,0,.5);z-index:11;
+  border:2px solid rgba(255,255,255,.15);box-shadow:0 16px 50px rgba(0,0,0,.5);
   background:#0a0c18}
 .stage-preview-label{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-weight:900;
   letter-spacing:.1em;font-size:18px;text-shadow:0 2px 6px #000;pointer-events:none}
-.stage-cards{position:fixed;bottom:74px;left:50%;transform:translateX(-50%);display:flex;gap:16px;z-index:12}
+.stage-cards{display:flex;gap:16px}
 .stage-card{width:140px;border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid rgba(255,255,255,.15);
   background:rgba(255,255,255,.04);transition:.14s;position:relative}
 .stage-card:hover{transform:translateY(-4px)}
@@ -165,8 +165,7 @@ canvas{display:block;outline:none}
 
 /* ---- mobile / orientation: make select UIs scrollable & fit, fix rotation ---- */
 @media (max-width: 820px), (pointer: coarse){
-  .stage-preview{width:88vw;height:34vh;top:64px}
-  .stage-cards{gap:8px;bottom:78px}
+  .stage-cards{gap:8px}
   .stage-card{width:88px}
   .stage-card-thumb{height:46px}
   .stage-card-name{font-size:11px;padding:5px}
@@ -493,3 +492,141 @@ canvas{display:block;outline:none}
   .cs-main{ justify-content:center; gap:18px; }
   .tok{ width:54px; height:54px; }
 }
+
+/* ============================================================================
+   STAGE SELECT v2 — grid layout, centered, no overflow. Authoritative.
+   ============================================================================ */
+.stage-grid{ display:grid; grid-template-rows:auto 1fr auto; gap:10px; padding:14px 16px; overflow:hidden; }
+.stage-grid .seltitle{ position:static; transform:none; width:auto; text-align:center; }
+.stage-main{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; min-height:0; z-index:1; }
+.stage-grid .stage-preview{ position:static; transform:none;
+  width:min(72vw,640px); height:min(46vh,380px); border-radius:16px; overflow:hidden;
+  border:2px solid rgba(255,255,255,.15); box-shadow:0 16px 50px rgba(0,0,0,.5); background:#0a0c18; }
+.stage-grid .stage-cards{ position:static; transform:none; display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+.stage-grid .stage-actions{ position:static; transform:none; display:flex; gap:12px; justify-content:center; z-index:1; }
+
+@media (max-width: 820px), (pointer: coarse){
+  .stage-grid .stage-preview{ width:90vw; height:34vh; }
+  .stage-grid .stage-cards{ gap:8px; }
+  .stage-card{ width:90px; }
+  .stage-card-thumb{ height:48px; }
+}
+
+/* ---- remove the animated yellow oval around VS ---- */
+.vs::before{ display:none !important; content:none !important; }
+
+/* ============================================================================
+   TITLE PAGE POLISH — dramatic metallic energy logo + layered FX (original).
+   ============================================================================ */
+.title-bg{ overflow:hidden; }
+
+/* animated energy aura behind everything */
+.title-bg::before{
+  content:""; position:absolute; inset:-30%; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(circle at 30% 35%, rgba(255,120,30,.18), transparent 40%),
+    radial-gradient(circle at 72% 60%, rgba(60,120,255,.20), transparent 42%),
+    radial-gradient(circle at 50% 50%, rgba(150,50,200,.14), transparent 55%);
+  animation:auraDrift 14s ease-in-out infinite alternate; filter:blur(8px);
+}
+@keyframes auraDrift{ from{ transform:translate(-2%,-1%) scale(1);} to{ transform:translate(3%,2%) scale(1.12);} }
+
+/* radial speed-burst lines from behind the logo */
+.title-bg::after{
+  content:""; position:absolute; top:38%; left:50%; width:120vmax; height:120vmax; z-index:0; pointer-events:none;
+  transform:translate(-50%,-50%);
+  background:repeating-conic-gradient(from 0deg, rgba(255,255,255,.04) 0deg 2deg, transparent 2deg 8deg);
+  -webkit-mask-image:radial-gradient(circle, black 0%, transparent 42%);
+          mask-image:radial-gradient(circle, black 0%, transparent 42%);
+  animation:spinSlow 60s linear infinite;
+}
+@keyframes spinSlow{ to{ transform:translate(-50%,-50%) rotate(360deg);} }
+
+/* the BANG BANG BANGALORE logo — chunky metallic energy */
+.logo-bbb{
+  position:relative; z-index:2;
+  font-family:"Arial Black","Trebuchet MS",sans-serif;
+  font-weight:900; letter-spacing:.01em; line-height:.86; text-transform:uppercase;
+  font-size:clamp(40px,11vw,140px);
+  background:linear-gradient(180deg,#fff 0%,#ffe680 30%,#ff9a1e 58%,#c43a00 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  -webkit-text-stroke:2px rgba(60,20,0,.55);
+  filter:
+    drop-shadow(0 2px 0 #7a2d00)
+    drop-shadow(0 5px 0 #4a1a00)
+    drop-shadow(0 0 26px rgba(255,150,40,.6));
+  transform:skewX(-5deg);
+  animation:logoPulse 2.6s ease-in-out infinite;
+}
+@keyframes logoPulse{ 0%,100%{ filter:drop-shadow(0 2px 0 #7a2d00) drop-shadow(0 5px 0 #4a1a00) drop-shadow(0 0 26px rgba(255,150,40,.55)); }
+  50%{ filter:drop-shadow(0 2px 0 #7a2d00) drop-shadow(0 5px 0 #4a1a00) drop-shadow(0 0 40px rgba(255,180,60,.85)); } }
+.logo-bbb .sub{
+  display:block; margin-top:.32em; transform:skewX(0);
+  font-size:.2em; letter-spacing:.55em; font-weight:900;
+  background:linear-gradient(180deg,#bfe0ff,#5a8fff);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  -webkit-text-stroke:1px rgba(10,30,80,.5);
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.5)) drop-shadow(0 0 14px rgba(90,140,255,.6));
+}
+
+/* prompt as a glowing pill */
+.title-bg .prompt{
+  position:relative; z-index:2; margin-top:2em;
+  padding:10px 26px; border-radius:30px; font-weight:900; letter-spacing:.2em;
+  color:#1a1206; background:linear-gradient(180deg,#ffe680,#ff8a1e);
+  box-shadow:0 6px 22px rgba(255,140,30,.5), inset 0 0 0 2px rgba(255,255,255,.3);
+  animation:promptGlow 1.4s ease-in-out infinite;
+}
+@keyframes promptGlow{ 0%,100%{ box-shadow:0 6px 22px rgba(255,140,30,.45), inset 0 0 0 2px rgba(255,255,255,.3);}
+  50%{ box-shadow:0 6px 30px rgba(255,180,60,.8), inset 0 0 0 2px rgba(255,255,255,.5);} }
+.title-bg .hint{ z-index:2; }
+
+/* ============================================================================
+   CHARACTER INTRO CUTSCENE
+   ============================================================================ */
+.cutscene-screen{ background:#05060c; position:fixed; inset:0; overflow:hidden; }
+.cut-vignette{ position:absolute; inset:0; pointer-events:none; z-index:2;
+  background:radial-gradient(ellipse at 50% 42%, transparent 40%, rgba(0,0,0,.7) 100%); }
+/* cinematic letterbox bars */
+.cutscene-screen::before, .cutscene-screen::after{
+  content:""; position:absolute; left:0; right:0; height:9vh; background:#000; z-index:3; }
+.cutscene-screen::before{ top:0; } .cutscene-screen::after{ bottom:0; }
+
+.cut-namebar{ position:absolute; left:6vw; bottom:18vh; z-index:4; font-weight:900;
+  font-size:clamp(26px,5vw,56px); letter-spacing:.06em; text-transform:uppercase;
+  text-shadow:0 3px 0 rgba(0,0,0,.6), 0 0 20px rgba(0,0,0,.6); }
+.cut-subtitle{ position:absolute; left:50%; bottom:11vh; transform:translateX(-50%); z-index:4;
+  max-width:84vw; text-align:center; color:#fff; font-size:clamp(16px,2.6vw,28px); font-weight:600;
+  text-shadow:0 2px 6px #000, 0 0 12px rgba(0,0,0,.8); animation:subIn .3s ease; }
+@keyframes subIn{ from{ opacity:0; transform:translate(-50%,8px);} to{ opacity:1; transform:translate(-50%,0);} }
+
+.cut-skip{ position:absolute; right:4vw; top:calc(9vh + 14px); z-index:5;
+  padding:8px 18px; border-radius:24px; font-weight:900; letter-spacing:.12em; cursor:pointer;
+  color:#fff; background:rgba(20,24,40,.7); border:2px solid rgba(255,255,255,.35); }
+.cut-skip:hover{ border-color:#ffd23f; color:#ffd23f; }
+.cut-progress{ position:absolute; left:50%; transform:translateX(-50%); bottom:calc(9vh + 12px); z-index:5; display:flex; gap:8px; }
+.cut-progress span{ width:26px; height:5px; border-radius:3px; background:rgba(255,255,255,.25); }
+.cut-progress span.on{ background:#ffd23f; box-shadow:0 0 8px #ffd23f; }
+
+/* ---- title screen: stop prompt/hint overlap ---- */
+.title-bg .prompt{ margin-top:1.6em; }
+.title-bg .hint{ position:fixed; bottom:10px; left:0; right:0; width:auto; font-size:11px;
+  line-height:1.4; max-width:92vw; margin:0 auto; opacity:.7; }
+/* on short or mobile screens, hide the long control hint so it can't overlap */
+@media (max-height: 620px), (orientation:portrait) and (pointer:coarse){
+  .title-bg .hint{ display:none; }
+}
+
+/* ---- stage label: clean banner inside the preview, no overlap ---- */
+.stage-grid .stage-preview{ position:relative; }
+.stage-grid .stage-preview-label{
+  position:absolute; left:0; right:0; bottom:0; margin:0; padding:8px 0;
+  background:linear-gradient(180deg, transparent, rgba(0,0,0,.75));
+  font-size:clamp(14px,2vw,20px); z-index:2;
+}
+
+/* ---- fullscreen button (title) ---- */
+.fs-btn{ position:relative; z-index:2; margin-top:14px; padding:8px 20px; border-radius:24px;
+  font-weight:900; letter-spacing:.12em; cursor:pointer; color:#cdd6ff;
+  background:rgba(20,24,40,.6); border:2px solid rgba(255,255,255,.3); }
+.fs-btn:hover{ border-color:#ffd23f; color:#ffd23f; }

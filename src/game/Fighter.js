@@ -45,7 +45,7 @@ export class Fighter {
     this.ki-=12; this.invuln=0.22; this.vel.x=dir*this.def.speed*3.4; this.enter(ST.DASH);
     this.onDash && this.onDash();
   }
-  jump(){ if(this.grounded && [ST.IDLE,ST.WALK].includes(this.state)){ this.vel.y=12; this.grounded=false; this.enter(ST.JUMP); } }
+  jump(){ if(this.grounded && [ST.IDLE,ST.WALK].includes(this.state)){ this.vel.y=12; this.grounded=false; this.enter(ST.JUMP); this.onJump&&this.onJump(); } }
   fireSpecial(kind){
     if(this.lockMove) return false;
     const cost = kind==='rush'?40:30;

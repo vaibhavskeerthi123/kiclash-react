@@ -47,13 +47,18 @@ export class World {
     this.slowmo=1; this.slowTimer=0; this.comboFlash=0;
     this.shake={t:0,mag:0,x:0,y:0};
     this.flash={col:[1,1,1],a:0};
+    this.sfx=[];   // queue of sound event names; drained by the SFX player each frame
     this.input=new Input();
     // expose fx hooks on fighters
     this.fighters.forEach(f=>{
       f.onDash=()=>this.dashTrail(f);
-      f.onTransform=()=>this.transformBurst(f);
+      f.onTransform=()=>{ this.transformBurst(f); this.emit('transform'); };
+      f.onJump=()=>this.emit('jump');
+      f.onHit=(blocked,heavy)=>this.emit(blocked?'block':(heavy?'hit_heavy':'hit'));
     });
   }
+  emit(name){ this.sfx.push(name); }
+  drainSfx(){ const s=this.sfx; this.sfx=[]; return s; }
   dispose(){ this.input.dispose(); }
 
   doShake(m,t){ this.shake.mag=Math.max(this.shake.mag,m); this.shake.t=Math.max(this.shake.t,t); }
@@ -144,8 +149,9 @@ export class World {
     if(f.comboTimer>0){ f.comboTimer-=dt; if(f.comboTimer<=0) f.combo=0; }
     if([ST.IDLE,ST.WALK,ST.BLOCK,ST.CHARGE].includes(f.state)) f.facing=Math.sign(foe.pos.x-f.pos.x)||f.facing;
 
-    if(f.state===ST.CHARGE){ f.ki=Math.min(f.maxki,f.ki+f.def.kiRegen*2.4*dt); this.spawnCharge(f); this.doShake(.15,.05); }
-    else f.ki=Math.min(f.maxki,f.ki+f.def.kiRegen*0.35*dt);
+    if(f.state===ST.CHARGE){ f.ki=Math.min(f.maxki,f.ki+f.def.kiRegen*2.4*dt); this.spawnCharge(f); this.doShake(.15,.05);
+      if(!f._chargeSfx){ this.emit('charge'); f._chargeSfx=true; } }
+    else { f.ki=Math.min(f.maxki,f.ki+f.def.kiRegen*0.35*dt); f._chargeSfx=false; }
     if(f.guardMeter<100 && f.state!==ST.BLOCK) f.guardMeter=Math.min(100,f.guardMeter+30*dt);
     if(f.transformed || f.state===ST.CHARGE) this.spawnAura(f);
 
@@ -178,6 +184,7 @@ export class World {
           f.hitThisSwing=true; f.ki=Math.min(f.maxki,f.ki+m.kiGain); f.blast=Math.min(f.maxblast,f.blast+m.dmg*.05);
           const ip=this.V((hx+foe.pos.x)/2, hy, 0);
           this.spawnImpact(ip, blocked?[.6,.8,1]:[1,.9,.4], m.dmg>60);
+          this.emit(blocked?'block':(m.dmg>60?'hit_heavy':'hit'));
           if(!blocked){ f.combo++; f.comboTimer=2; foe.combo=0; this.comboFlash=Math.max(this.comboFlash,1);
             this.doShake(m.dmg>60?1:.5,.18); if(m.dmg>60){ this.slowmo=.35; this.slowTimer=.12; } }
           else this.doShake(.25,.1);
@@ -188,7 +195,7 @@ export class World {
   }
   stepSpecial(f){
     if(f.specialKind==='blast'){
-      if(f.t>.18 && !f._fired){ this.spawnBlast(f); f._fired=true; this.doShake(.5,.15); }
+      if(f.t>.18 && !f._fired){ this.spawnBlast(f); f._fired=true; this.doShake(.5,.15); this.emit('ki'); }
       if(f.t>.45){ f.lockMove=false; f.enter(ST.IDLE); }
     } else if(f.specialKind==='rush'){
       const foe=this.fighters.find(x=>x!==f);

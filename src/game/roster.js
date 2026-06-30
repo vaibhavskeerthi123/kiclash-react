@@ -13,6 +13,7 @@ export const ROSTER = [
     // renderStyle: 'textured' keeps the model's own textures (recommended for your GLBs).
     // 'cel' replaces them with a flat anime tint. outline:true adds an ink edge.
     renderStyle:'textured', outline:true,
+    intro:{ lines:['So you want to test your strength?','Then come at me with everything!'], pose:'charge' },
     trans:{ name:'ASCENDED', body:[1.0,0.85,0.25], ki:[1.0,0.95,0.4], rim:[1.0,0.9,0.3] } },
   { id:'rygar', name:'RYGAR', arch:'Power Bruiser', hair:'mane',
     body:[0.55,0.18,0.55], ki:[0.4,0.6,1.0], rim:[0.45,0.7,1.0],
@@ -21,6 +22,7 @@ export const ROSTER = [
     // renderStyle: 'textured' keeps the model's own textures (recommended for your GLBs).
     // 'cel' replaces them with a flat anime tint. outline:true adds an ink edge.
     renderStyle:'textured', outline:true,
+    intro:{ lines:['You stand before a wall of muscle.','I will break you in half!'], pose:'charge' },
     trans:{ name:'OVERDRIVE', body:[0.7,0.25,0.7], ki:[0.5,0.75,1.0], rim:[0.55,0.85,1.0] } },
   { id:'vela', name:'VELA', arch:'Speed Striker', hair:'flat',
     body:[0.2,0.55,0.62], ki:[0.3,1.0,0.85], rim:[0.4,1.0,0.8],
@@ -29,6 +31,7 @@ export const ROSTER = [
     // renderStyle: 'textured' keeps the model's own textures (recommended for your GLBs).
     // 'cel' replaces them with a flat anime tint. outline:true adds an ink edge.
     renderStyle:'textured', outline:true,
+    intro:{ lines:["You won't even see me move.",'This ends in a flash!'], pose:'charge' },
     trans:{ name:'FLASH STEP', body:[0.3,0.75,0.82], ki:[0.5,1.0,0.95], rim:[0.5,1.0,0.9] } },
 ];
 

@@ -45,25 +45,27 @@ function StagePreview({ id, customStage }){
 export default function StageSelect({ onDone, onBack, customStages }){
   const [sel,setSel]=useState('wasteland');
   return (
-    <div className="screen select-bg stage-page">
+    <div className="screen select-bg stage-grid">
+      <div className="bg-dim" />
       <div className="seltitle">SELECT STAGE</div>
 
-      <div className="stage-preview">
-        {/* key forces a clean preview remount when switching stages */}
-        <StagePreview key={sel + (customStages[sel]?'-c':'')} id={sel} customStage={customStages[sel]} />
-        <div className="stage-preview-label">
-          {STAGES.find(s=>s.id===sel)?.label}{customStages[sel] ? '  · CUSTOM' : ''}
-        </div>
-      </div>
-
-      <div className="stage-cards">
-        {STAGES.map(s=>(
-          <div key={s.id} className={`stage-card${sel===s.id?' sel':''}`} onClick={()=>setSel(s.id)}>
-            <div className="stage-card-thumb" data-stage={s.id} />
-            <div className="stage-card-name">{s.label}</div>
-            {customStages[s.id] && <div className="stage-card-tag">CUSTOM</div>}
+      <div className="stage-main">
+        <div className="stage-preview">
+          <StagePreview key={sel + (customStages[sel]?'-c':'')} id={sel} customStage={customStages[sel]} />
+          <div className="stage-preview-label">
+            {STAGES.find(s=>s.id===sel)?.label}{customStages[sel] ? '  · CUSTOM' : ''}
           </div>
-        ))}
+        </div>
+
+        <div className="stage-cards">
+          {STAGES.map(s=>(
+            <div key={s.id} className={`stage-card${sel===s.id?' sel':''}`} onClick={()=>setSel(s.id)}>
+              <div className="stage-card-thumb" data-stage={s.id} />
+              <div className="stage-card-name">{s.label}</div>
+              {customStages[s.id] && <div className="stage-card-tag">CUSTOM</div>}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="sel-actions stage-actions">

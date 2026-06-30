@@ -6,10 +6,12 @@ import { loadFighterModel } from './components/FighterModel.jsx';
 import { autoLoadClips } from './components/animations.js';
 import CharacterSelect from './components/CharacterSelect.jsx';
 import StageSelect from './components/StageSelect.jsx';
+import CutsceneIntro from './components/CutsceneIntro.jsx';
 import BattleScene from './components/BattleScene.jsx';
 import HUD from './components/HUD.jsx';
 import TouchControls from './components/TouchControls.jsx';
 import AudioManager from './components/AudioManager.jsx';
+import SfxManager from './components/SfxManager.jsx';
 
 const rgb=c=>`rgb(${c.map(v=>v*255|0).join(',')})`;
 const isTouch = (typeof window!=='undefined') &&
@@ -31,6 +33,17 @@ export default function App(){
   const [muted,setMuted]=useState(false);
   const armedRef=useRef(null);
   const pendingPick=useRef({p1:0,p2:1});   // remembers character picks between select -> stage
+
+  function toggleFullscreen(){
+    const el=document.documentElement;
+    if(!document.fullscreenElement){
+      (el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen||(()=>{})).call(el);
+      // lock to landscape on mobile if supported
+      if(screen.orientation && screen.orientation.lock){ screen.orientation.lock('landscape').catch(()=>{}); }
+    } else {
+      (document.exitFullscreen||document.webkitExitFullscreen||(()=>{})).call(document);
+    }
+  }
   const lastPick=useRef({ p1:0, p2:1, stage:'wasteland' });
 
   const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(''),2600); };
@@ -185,6 +198,8 @@ export default function App(){
 
       {/* scene-based music (files in public/audio/, swappable) */}
       <AudioManager scene={scene} muted={muted} volume={0.5} />
+      {/* combat sound effects */}
+      <SfxManager world={world} muted={muted} volume={0.7} />
       {scene!=='loading' && (
         <button className="mute-btn" onClick={()=>setMuted(m=>!m)}
           title={muted?'Unmute':'Mute'}>{muted?'🔇':'🔊'}</button>
@@ -207,6 +222,7 @@ export default function App(){
           <div className="bg-dim" />
           <div className="logo logo-bbb">BANG BANG<span className="sub">BANGALORE</span></div>
           <div className="prompt">PRESS ENTER / TAP TO BEGIN</div>
+          <button className="fs-btn" onClick={(e)=>{ e.stopPropagation(); toggleFullscreen(); }}>⛶ FULLSCREEN</button>
           <div className="hint">
             P1: WASD move · J/K light/heavy · L blast · O rush · U charge · I block · Space jump/dash · T transform · P ultimate
           </div>
@@ -225,7 +241,17 @@ export default function App(){
         <StageSelect
           customStages={customStages}
           onBack={()=>setScene('select')}
-          onDone={(stage)=>{ const { p1, p2 }=pendingPick.current; startBattle({ p1, p2, stage }); }}
+          onDone={(stage)=>{ pendingPick.current={ ...pendingPick.current, stage }; setScene('cutscene'); }}
+        />
+      )}
+
+      {scene==='cutscene' && (
+        <CutsceneIntro
+          p1Def={ROSTER[pendingPick.current.p1]}
+          p2Def={ROSTER[pendingPick.current.p2]}
+          customModels={customModels}
+          customClips={customClips}
+          onDone={()=>{ const { p1, p2, stage }=pendingPick.current; startBattle({ p1, p2, stage }); }}
         />
       )}
 

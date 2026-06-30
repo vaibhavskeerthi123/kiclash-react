@@ -31,9 +31,9 @@ export default function BattleScene({ world, stageId, customModels, customStage,
     // dynamic camera
     const [a,b]=world.fighters;
     const mid=(a.pos.x+b.pos.x)/2, sep=Math.abs(a.pos.x-b.pos.x);
-    const dist=clamp(9+sep*0.5, 9, 22);
-    camTarget.current.lerp(new THREE.Vector3(mid*0.6, 2.2, 0), 1-Math.pow(0.001, dt));
-    camPos.current.lerp(new THREE.Vector3(mid*0.5, 3.4+sep*0.08, dist), 1-Math.pow(0.0016, dt));
+    const dist=clamp(7+sep*0.45, 7, 18);
+    camTarget.current.lerp(new THREE.Vector3(mid*0.6, 2.0, 0), 1-Math.pow(0.001, dt));
+    camPos.current.lerp(new THREE.Vector3(mid*0.5, 2.9+sep*0.07, dist), 1-Math.pow(0.0016, dt));
     camera.position.set(camPos.current.x+world.shake.x, camPos.current.y+world.shake.y, camPos.current.z);
     camera.lookAt(camTarget.current);
 
@@ -48,9 +48,9 @@ export default function BattleScene({ world, stageId, customModels, customStage,
 
   return (
     <>
-      <hemisphereLight args={['#8899ff','#332244', 0.9]} />
+      <hemisphereLight args={['#8899ff','#332244', 0.55]} />
       <directionalLight
-        position={[8,16,6]} intensity={2.2} castShadow
+        position={[8,16,6]} intensity={1.15} castShadow
         shadow-mapSize-width={1024} shadow-mapSize-height={1024}
         shadow-camera-left={-30} shadow-camera-right={30}
         shadow-camera-top={30} shadow-camera-bottom={-30}
