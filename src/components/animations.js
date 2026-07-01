@@ -18,6 +18,8 @@ export const STATE_CLIP = {
   stagger: ['hit','hit reaction','impact','stagger'],
   knock:   ['knockdown','falling back','fall','hit reaction'],
   special: ['cast','casting','throw','attack','punch'],
+  kiblast: ['kiblast','ki','blast','cast','casting','throw'],
+  ultimate:['ultimate','ult','super','finisher','cast'],
   dead:    ['death','dying','knockout','knockdown'],
 };
 
@@ -72,7 +74,7 @@ export function loadClip(url, name){
 
 // Try to auto-load named clips for a fighter id from
 // public/models/<id>_anims/<clip>.fbx . Returns { clips:{name:clip}, log:[...] }.
-export async function autoLoadClips(id, names=['idle','walk','punch','kick','jump','block','charge','hit','death','cast']){
+export async function autoLoadClips(id, names=['idle','walk','punch','kick','jump','block','charge','hit','death','kiblast','ultimate','rush','dash']){
   const out = {};
   const log = [];
   for(const n of names){

@@ -139,7 +139,10 @@ function stateToAnim(f){
     case ST.CHARGE: return 'charge';
     case ST.STAGGER: return 'stagger';
     case ST.KNOCK: return 'knock';
-    case ST.SPECIAL: return 'special';
+    case ST.SPECIAL:
+      if(f.specialKind==='ult') return 'ultimate';
+      if(f.specialKind==='rush') return 'punch';
+      return 'kiblast';   // ki blast
     case ST.DEAD: return 'dead';
     default: return 'idle';
   }

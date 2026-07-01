@@ -1,26 +1,35 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
+import { STAGES } from '../game/roster.js';
 
 const rand=(a,b)=>a+Math.random()*(b-a);
 const TAU=Math.PI*2;
 
 // Render a user-supplied GLB/FBX stage, auto-scaled so the play area (~90 units
 // wide) sits on its surface. Fighters move in x roughly -46..46.
-function CustomStage({ object }){
+function CustomStage({ object, adjust={} }){
   const prepared=useMemo(()=>{
     const root=object.clone(true);
-    // fit the stage so it's about 120 units across (covers the fight area + margin)
     const box=new THREE.Box3().setFromObject(root);
     const size=new THREE.Vector3(); box.getSize(size);
     const span=Math.max(size.x, size.z) || 1;
-    const s=120/span;
+    // scale: `spread` controls how wide the stage is around the fighters
+    const s=(adjust.spread||120)/span;
     root.scale.multiplyScalar(s);
     const box2=new THREE.Box3().setFromObject(root);
-    // put the stage's top surface near y=0 (where fighters stand)
-    root.position.y -= box2.max.y;
+    // Fighters stand at world y=0. By default we drop the stage's LOWEST point
+    // (its floor) to y=0. `floor` picks which surface is the ground:
+    //   'bottom' (default) -> stage's lowest point sits at y=0 (stand inside it)
+    //   'top'              -> stage's highest point sits at y=0 (stand on top)
+    // `floorY` then nudges the whole stage up/down for precise placement.
+    if((adjust.floor||'bottom')==='top') root.position.y -= box2.max.y;
+    else root.position.y -= box2.min.y;
+    root.position.y += (adjust.floorY||0);
+    root.position.x += (adjust.offsetX||0);
+    root.position.z += (adjust.offsetZ||0);
     root.traverse(o=>{ if(o.isMesh){ o.receiveShadow=true; o.castShadow=true; } });
     return root;
-  }, [object]);
+  }, [object, adjust]);
   return (
     <group>
       <color attach="background" args={['#1a1f33']} />
@@ -52,7 +61,10 @@ function Rocks({ color, count, area }){
 }
 
 export default function Stage({ id, customObject }){
-  if(customObject) return <CustomStage object={customObject} />;
+  if(customObject){
+    const stageDef = STAGES.find(s=>s.id===id);
+    return <CustomStage object={customObject} adjust={(stageDef && stageDef.adjust) || {}} />;
+  }
   if(id==='lava'){
     const rings=useMemo(()=>Array.from({length:8},()=>({ r:rand(8,40), w:rand(0.4,1.4) })),[]);
     return (
