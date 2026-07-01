@@ -95,6 +95,11 @@ export class World {
   /* --- input + AI --- */
   pollControls(f, map){
     if(f.state===ST.DEAD) return; const k=this.input;
+    // FAILSAFE: if we're standing in a neutral grounded state, no special can be
+    // in progress, so lockMove must be false. This defeats any edge case where a
+    // special was interrupted and left the lock stuck true (which would disable
+    // all attacks while still allowing movement/jump).
+    if(f.lockMove && f.grounded && [ST.IDLE,ST.WALK].includes(f.state)){ f.lockMove=false; f.specialKind=null; }
     const locked=[ST.STAGGER,ST.KNOCK,ST.DASH,ST.SPECIAL].includes(f.state)||f.lockMove;
     let mvx=0;
     if(!locked && f.state!==ST.ATK && f.state!==ST.AIR_ATK){
@@ -119,6 +124,7 @@ export class World {
   }
   aiControl(f, foe, dt){
     if(f.state===ST.DEAD) return;
+    if(f.lockMove && f.grounded && [ST.IDLE,ST.WALK].includes(f.state)){ f.lockMove=false; f.specialKind=null; }
     const locked=[ST.STAGGER,ST.KNOCK,ST.DASH,ST.SPECIAL,ST.ATK,ST.AIR_ATK].includes(f.state)||f.lockMove;
     const dx=foe.pos.x-f.pos.x, dist=Math.abs(dx), dir=Math.sign(dx)||1;
     if([ST.IDLE,ST.WALK,ST.BLOCK,ST.CHARGE].includes(f.state)) f.facing=dir;
@@ -144,6 +150,11 @@ export class World {
   /* --- per-fighter physics + state --- */
   stepFighter(f, foe, dt){
     f.anim+=dt; f.t+=dt;
+    // Absolute invariant: lockMove is only valid during a SPECIAL. If we're in
+    // any other state, the special is over (or was interrupted) — clear the lock
+    // so attacks can never be permanently disabled. This is the definitive fix
+    // for "can move/jump but can't attack after taking damage".
+    if(f.lockMove && f.state!==ST.SPECIAL){ f.lockMove=false; f.specialKind=null; f._fired=false; }
     if(f.flashHit>0) f.flashHit=Math.max(0,f.flashHit-dt*4);
     if(f.invuln>0) f.invuln-=dt;
     if(f.comboTimer>0){ f.comboTimer-=dt; if(f.comboTimer<=0) f.combo=0; }
@@ -166,8 +177,8 @@ export class World {
       case ST.WALK: if(Math.abs(f.vel.x)<.4) f.enter(ST.IDLE); break;
       case ST.DASH: if(f.t>.22) f.enter(ST.IDLE); break;
       case ST.ATK: case ST.AIR_ATK: this.stepAttack(f,foe); break;
-      case ST.STAGGER: if(f.t>=(f.staggerT||.3)) f.enter(f.grounded?ST.IDLE:ST.JUMP); break;
-      case ST.KNOCK: if(f.grounded && f.t>.1) f.enter(ST.IDLE); break;
+      case ST.STAGGER: if(f.t>=(f.staggerT||0.3)) f.enter(f.grounded?ST.IDLE:ST.JUMP); break;
+      case ST.KNOCK: if(f.grounded && f.t>.1) f.enter(ST.IDLE); else if(f.t>2.5) f.enter(ST.IDLE); break;
       case ST.SPECIAL: this.stepSpecial(f); break;
       default: break;
     }

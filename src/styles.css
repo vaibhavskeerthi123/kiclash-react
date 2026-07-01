@@ -545,7 +545,7 @@ canvas{display:block;outline:none}
 /* the BANG BANG BANGALORE logo — chunky metallic energy */
 .logo-bbb{
   position:relative; z-index:2;
-  font-family:"Arial Black","Trebuchet MS",sans-serif;
+  font-family:'Emotions Condensed','Oswald','Anton','Arial Narrow','Arial Black','Trebuchet MS',sans-serif;
   font-weight:900; letter-spacing:.01em; line-height:.86; text-transform:uppercase;
   font-size:clamp(40px,11vw,140px);
   background:linear-gradient(180deg,#fff 0%,#ffe680 30%,#ff9a1e 58%,#c43a00 100%);
@@ -630,3 +630,26 @@ canvas{display:block;outline:none}
   font-weight:900; letter-spacing:.12em; cursor:pointer; color:#cdd6ff;
   background:rgba(20,24,40,.6); border:2px solid rgba(255,255,255,.3); }
 .fs-btn:hover{ border-color:#ffd23f; color:#ffd23f; }
+
+/* ---- title font: Emotions Condensed (drop the file in public/fonts/) ----
+   Accepts several common filenames so it works whatever you named the file. */
+@font-face{
+  font-family:'Emotions Condensed';
+  src:url('/fonts/EmotionsCondensed.ttf') format('truetype'),
+      url('/fonts/EmotionsCondensed.otf') format('opentype'),
+      url('/fonts/EmotionsCondensed.woff2') format('woff2'),
+      url('/fonts/EmotionsCondensed.woff') format('woff'),
+      url('/fonts/Emotions Condensed.ttf') format('truetype'),
+      url('/fonts/Emotions Condensed.otf') format('opentype'),
+      url('/fonts/Emotions-Condensed.ttf') format('truetype'),
+      url('/fonts/emotions-condensed.ttf') format('truetype'),
+      url('/fonts/EmotionsCondensed-Regular.ttf') format('truetype'),
+      url('/fonts/Emotions_Condensed.ttf') format('truetype');
+  font-display:swap;
+}
+/* apply to the title, with a strong condensed fallback if the file is absent */
+.logo-bbb{
+  font-family:'Emotions Condensed','Oswald','Anton','Arial Narrow',
+    'Arial Black','Trebuchet MS',sans-serif !important;
+  letter-spacing:.02em;
+}

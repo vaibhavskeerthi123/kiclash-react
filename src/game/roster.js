@@ -168,7 +168,7 @@ export const ROSTER = [
       rotY: 0,
       rotZ: 0,
       scale: 1,
-      yOffset: 0,
+      yOffset: -1.2,
       autoStand: true,
     },
     renderStyle: "textured",
