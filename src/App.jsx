@@ -7,6 +7,10 @@ import { autoLoadClips } from './components/animations.js';
 import CharacterSelect from './components/CharacterSelect.jsx';
 import StageSelect from './components/StageSelect.jsx';
 import CutsceneIntro from './components/CutsceneIntro.jsx';
+import StoryMode from './components/StoryMode.jsx';
+import Credits from './components/Credits.jsx';
+import PreBattleDialogue from './components/PreBattleDialogue.jsx';
+import { MISSIONS } from './game/story.js';
 import BattleScene from './components/BattleScene.jsx';
 import HUD from './components/HUD.jsx';
 import TouchControls from './components/TouchControls.jsx';
@@ -31,6 +35,9 @@ export default function App(){
   const [matchKey,setMatchKey]=useState(0);   // bump to force a clean BattleScene remount
   const [showAnimDiag,setShowAnimDiag]=useState(false);
   const [muted,setMuted]=useState(false);
+  const [storyProgress,setStoryProgress]=useState(0);   // missions cleared
+  const [activeMission,setActiveMission]=useState(null); // mission being played (for dialogue + unlock)
+  const [showDialogue,setShowDialogue]=useState(false);  // pre-battle dialogue overlay visible
   const armedRef=useRef(null);
   const pendingPick=useRef({p1:0,p2:1});   // remembers character picks between select -> stage
 
@@ -45,6 +52,24 @@ export default function App(){
     }
   }
   const lastPick=useRef({ p1:0, p2:1, stage:'wasteland' });
+
+  // Auto-enter fullscreen on mobile on the first interaction (browsers require a
+  // user gesture, so we do it on first tap). The manual button still toggles it.
+  useEffect(()=>{
+    if(!isTouch) return;
+    let armed=true;
+    const go=()=>{
+      if(!armed) return; armed=false;
+      const el=document.documentElement;
+      if(!document.fullscreenElement){
+        (el.requestFullscreen||el.webkitRequestFullscreen||(()=>{})).call(el);
+        if(screen.orientation && screen.orientation.lock){ screen.orientation.lock('landscape').catch(()=>{}); }
+      }
+      window.removeEventListener('pointerdown', go);
+    };
+    window.addEventListener('pointerdown', go);
+    return ()=>window.removeEventListener('pointerdown', go);
+  }, []);
 
   const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(''),2600); };
 
@@ -150,22 +175,55 @@ export default function App(){
 
   const startBattle=useCallback(({ p1, p2, stage })=>{
     lastPick.current={ p1, p2, stage };
+    setActiveMission(null); setShowDialogue(false);   // free battle: no story dialogue
     setWorld(prev=>{ if(prev) prev.dispose(); return new World(ROSTER[p1], ROSTER[p2]); });
     setStageId(stage); setWinner(null); setMatchKey(k=>k+1); setScene('battle');
   }, []);
 
+  // STORY: build the battle but show pre-battle dialogue first (world paused).
+  const startStoryMission=useCallback((mission)=>{
+    const p1=ROSTER.findIndex(c=>c.id===mission.player);
+    const p2=ROSTER.findIndex(c=>c.id===mission.foe);
+    lastPick.current={ p1, p2, stage:mission.stage };
+    setActiveMission(mission);
+    const w=new World(ROSTER[p1], ROSTER[p2]);
+    w.paused=true;                          // freeze fighters during dialogue
+    setWorld(prev=>{ if(prev) prev.dispose(); return w; });
+    setStageId(mission.stage); setWinner(null); setMatchKey(k=>k+1);
+    setShowDialogue(true);
+    setScene('battle');                     // battle scene renders behind the dialogue
+  }, []);
+
+  // called when the pre-battle dialogue finishes or is skipped
+  const beginAfterDialogue=useCallback(()=>{
+    setShowDialogue(false);
+    setWorld(prev=>{ if(prev) prev.paused=false; return prev; });   // unfreeze
+  }, []);
+
   const rematch=useCallback(()=>{
     const { p1, p2, stage }=lastPick.current;
-    startBattle({ p1, p2, stage });
-  }, [startBattle]);
+    if(activeMission){ startStoryMission(activeMission); }
+    else startBattle({ p1, p2, stage });
+  }, [startBattle, startStoryMission, activeMission]);
 
   const onEnd=useCallback((w)=>{
     setWinner(w);
+    // story: unlock the next mission if the player (fighters[0]) won
+    if(activeMission){
+      setWorld(prev=>{
+        if(prev && w && w===prev.fighters[0]){
+          const idx=MISSIONS.findIndex(m=>m.id===activeMission.id);
+          setStoryProgress(p=>Math.max(p, idx+1));
+        }
+        return prev;
+      });
+    }
     setTimeout(()=>setScene('result'), 1400);
-  }, []);
+  }, [activeMission]);
 
   const toTitle=useCallback(()=>{
     setWorld(prev=>{ if(prev) prev.dispose(); return null; });
+    setActiveMission(null); setShowDialogue(false);
     setScene('title');
   }, []);
 
@@ -188,13 +246,23 @@ export default function App(){
         </Canvas>
       )}
 
-      {(scene==='battle'||scene==='pause'||scene==='result') && world && <HUD world={world} />}
+      {(scene==='battle'||scene==='pause'||scene==='result') && world && !showDialogue && <HUD world={world} />}
+
+      {/* pre-battle story dialogue, layered over the paused battle scene */}
+      {scene==='battle' && showDialogue && activeMission && world && (
+        <PreBattleDialogue
+          mission={activeMission}
+          playerDef={ROSTER[lastPick.current.p1]}
+          foeDef={ROSTER[lastPick.current.p2]}
+          onDone={beginAfterDialogue}
+        />
+      )}
 
       {/* animation diagnostic (toggle with the F key) */}
       {scene==='battle' && showAnimDiag && <AnimDiagPanel />}
 
-      {/* on-screen controls during battle on touch devices */}
-      <TouchControls enabled={isTouch && scene==='battle'} onPause={()=>setScene('pause')} />
+      {/* on-screen controls during battle on touch devices (not during dialogue) */}
+      <TouchControls enabled={isTouch && scene==='battle' && !showDialogue} onPause={()=>setScene('pause')} />
 
       {/* scene-based music (files in public/audio/, swappable) */}
       <AudioManager scene={scene} muted={muted} volume={0.5} />
@@ -208,7 +276,7 @@ export default function App(){
       {scene==='loading' && (
         <div className="screen title-bg loading-screen" style={{ backgroundImage:'url(/backgrounds/title.jpg)' }}>
           <div className="bg-dim" />
-          <div className="logo logo-bbb">BANG BANG<span className="sub">BANGALORE</span></div>
+          <div className="logo logo-bbb">BUNTY’S<span className="sub">CATHARSIS</span></div>
           <div className="load-bar"><div className="load-fill" style={{
             width: `${loadProgress.total ? Math.round(loadProgress.done/loadProgress.total*100) : 0}%` }} /></div>
           <div className="load-label">{loadProgress.label}</div>
@@ -217,16 +285,29 @@ export default function App(){
       )}
 
       {scene==='title' && (
-        <div className="screen title-bg" onClick={()=>setScene('select')}
+        <div className="screen title-bg"
              style={{ backgroundImage:'url(/backgrounds/title.jpg)' }}>
           <div className="bg-dim" />
-          <div className="logo logo-bbb">BANG BANG<span className="sub">BANGALORE</span></div>
-          <div className="prompt">PRESS ENTER / TAP TO BEGIN</div>
-          <button className="fs-btn" onClick={(e)=>{ e.stopPropagation(); toggleFullscreen(); }}>⛶ FULLSCREEN</button>
-          <div className="hint">
-            P1: WASD move · J/K light/heavy · L blast · O rush · U charge · I block · Space jump/dash · T transform · P ultimate
+          <div className="logo logo-bbb">BUNTY’S<span className="sub">CATHARSIS</span></div>
+          <div className="title-menu">
+            <button className="menu-btn" onClick={()=>setScene('story')}>STORY MODE</button>
+            <button className="menu-btn" onClick={()=>setScene('select')}>FREE BATTLE</button>
+            <button className="menu-btn" onClick={()=>setScene('credits')}>CREDITS</button>
           </div>
+          <button className="fs-btn" onClick={(e)=>{ e.stopPropagation(); toggleFullscreen(); }}>⛶ FULLSCREEN</button>
         </div>
+      )}
+
+      {scene==='story' && (
+        <StoryMode
+          progress={storyProgress}
+          onBack={()=>setScene('title')}
+          onPlay={(mission)=>{ startStoryMission(mission); }}
+        />
+      )}
+
+      {scene==='credits' && (
+        <Credits onBack={()=>setScene('title')} />
       )}
 
       {scene==='select' && (
@@ -290,8 +371,17 @@ export default function App(){
             {winner ? `${winner.def.name} WINS` : 'DRAW'}
           </div>
           <div className="xp">+{Math.floor(120+Math.random()*140)} XP {winner&&winner.hp>winner.maxhp*0.8?'· PERFECT!':''}</div>
-          <button className="pill" onClick={rematch}>REMATCH</button>
-          <button className="pill ghost" onClick={toTitle}>TITLE SCREEN</button>
+          {activeMission ? (
+            <>
+              <button className="pill" onClick={rematch}>RETRY MISSION</button>
+              <button className="pill ghost" onClick={()=>{ setWorld(prev=>{ if(prev) prev.dispose(); return null; }); setActiveMission(null); setScene('story'); }}>MISSION SELECT</button>
+            </>
+          ) : (
+            <>
+              <button className="pill" onClick={rematch}>REMATCH</button>
+              <button className="pill ghost" onClick={toTitle}>TITLE SCREEN</button>
+            </>
+          )}
         </div>
       )}
 
