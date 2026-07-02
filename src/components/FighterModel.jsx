@@ -229,8 +229,9 @@ export default function FighterModel({ fighter, customObject, extraClips }){
     for(const { mat, hadTexture } of built.toonMats){
       // hit flash: briefly push emissive white
       const flash=f.flashHit*0.8;
-      // transform / charge: emit a faint ki glow
-      const glow=(f.transformed?0.35:(f.state===ST.CHARGE?0.22:0));
+      // transform / charge: emit a ki glow (pulsing during charge to feel alive)
+      const pulse=0.85+0.15*Math.sin(performance.now()*0.012);
+      const glow=(f.transformed?0.42:(f.state===ST.CHARGE?0.38*pulse:0));
       mat.emissive.setRGB(ki[0]*glow + flash, ki[1]*glow + flash, ki[2]*glow + flash);
       // if a model has NO texture, tint it with the body color so it's not plain white
       if(!hadTexture){ mat.color.setRGB(...f.color); }

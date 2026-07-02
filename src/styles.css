@@ -544,10 +544,10 @@ canvas{display:block;outline:none}
 
 /* the BANG BANG BANGALORE logo — chunky metallic energy */
 .logo-bbb{
-  position:relative; z-index:2;
+  position:relative; z-index:2; white-space:nowrap;
   font-family:'Emotions Condensed','Oswald','Anton','Arial Narrow','Arial Black','Trebuchet MS',sans-serif;
-  font-weight:900; letter-spacing:.01em; line-height:.86; text-transform:uppercase;
-  font-size:clamp(40px,11vw,140px);
+  font-weight:900; letter-spacing:.01em; line-height:.9; text-transform:uppercase;
+  font-size:clamp(28px,7.5vw,96px);
   background:linear-gradient(180deg,#fff 0%,#ffe680 30%,#ff9a1e 58%,#c43a00 100%);
   -webkit-background-clip:text; background-clip:text; color:transparent;
   -webkit-text-stroke:2px rgba(60,20,0,.55);

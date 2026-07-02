@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ROSTER } from './game/roster.js';
+import { ROSTER, STAGES } from './game/roster.js';
 import { World } from './game/World.js';
 import { loadFighterModel } from './components/FighterModel.jsx';
 import { autoLoadClips } from './components/animations.js';
@@ -53,22 +53,32 @@ export default function App(){
   }
   const lastPick=useRef({ p1:0, p2:1, stage:'wasteland' });
 
-  // Auto-enter fullscreen on mobile on the first interaction (browsers require a
-  // user gesture, so we do it on first tap). The manual button still toggles it.
+  // Auto-enter fullscreen on mobile on the first real tap. Browsers require a
+  // trusted user gesture and may reject the first attempt, so we keep trying on
+  // the first few taps until it succeeds. (Note: iOS Safari on iPhone does not
+  // support the Fullscreen API at all — the manual button is the fallback.)
   useEffect(()=>{
     if(!isTouch) return;
-    let armed=true;
+    let done=false;
     const go=()=>{
-      if(!armed) return; armed=false;
+      if(done) return;
       const el=document.documentElement;
-      if(!document.fullscreenElement){
-        (el.requestFullscreen||el.webkitRequestFullscreen||(()=>{})).call(el);
+      const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
+      if(document.fullscreenElement){ done=true; cleanup(); return; }
+      if(req){
+        const p=req.call(el);
+        if(p && p.then){ p.then(()=>{ done=true; cleanup(); }).catch(()=>{}); }
+        else { done=true; cleanup(); }
         if(screen.orientation && screen.orientation.lock){ screen.orientation.lock('landscape').catch(()=>{}); }
       }
-      window.removeEventListener('pointerdown', go);
     };
-    window.addEventListener('pointerdown', go);
-    return ()=>window.removeEventListener('pointerdown', go);
+    const cleanup=()=>{
+      window.removeEventListener('click', go);
+      window.removeEventListener('touchend', go);
+    };
+    window.addEventListener('click', go);
+    window.addEventListener('touchend', go);
+    return cleanup;
   }, []);
 
   const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(''),2600); };
@@ -85,10 +95,10 @@ export default function App(){
     return ()=>window.removeEventListener('keydown', onKey);
   }, [scene]);
 
-  // actually freeze/unfreeze the simulation when paused
+  // actually freeze/unfreeze the simulation when paused OR during story dialogue
   useEffect(()=>{
-    if(world) world.paused = (scene==='pause');
-  }, [scene, world]);
+    if(world) world.paused = (scene==='pause') || showDialogue;
+  }, [scene, world, showDialogue]);
 
   // auto-load fighters/stages/animations, tracking progress for the loading screen
   useEffect(()=>{
@@ -176,9 +186,21 @@ export default function App(){
   const startBattle=useCallback(({ p1, p2, stage })=>{
     lastPick.current={ p1, p2, stage };
     setActiveMission(null); setShowDialogue(false);   // free battle: no story dialogue
-    setWorld(prev=>{ if(prev) prev.dispose(); return new World(ROSTER[p1], ROSTER[p2]); });
+    setWorld(prev=>{ if(prev) prev.dispose(); const w=new World(ROSTER[p1], ROSTER[p2]); applyStage(w, stage); return w; });
     setStageId(stage); setWinner(null); setMatchKey(k=>k+1); setScene('battle');
   }, []);
+
+  // apply per-stage movement bounds + starting positions (keeps fighters inside
+  // a small custom stage interior instead of walking out of frame)
+  function applyStage(w, stageId){
+    const def=STAGES.find(s=>s.id===stageId);
+    const b=(def && def.adjust && def.adjust.bounds) || 46;
+    w.bounds=b;
+    // start the fighters a sensible distance apart, within bounds
+    const startX=Math.min(b*0.5, 6);
+    if(w.fighters[0]) w.fighters[0].pos.x=-startX;
+    if(w.fighters[1]) w.fighters[1].pos.x= startX;
+  }
 
   // STORY: build the battle but show pre-battle dialogue first (world paused).
   const startStoryMission=useCallback((mission)=>{
@@ -187,6 +209,7 @@ export default function App(){
     lastPick.current={ p1, p2, stage:mission.stage };
     setActiveMission(mission);
     const w=new World(ROSTER[p1], ROSTER[p2]);
+    applyStage(w, mission.stage);
     w.paused=true;                          // freeze fighters during dialogue
     setWorld(prev=>{ if(prev) prev.dispose(); return w; });
     setStageId(mission.stage); setWinner(null); setMatchKey(k=>k+1);
@@ -276,7 +299,7 @@ export default function App(){
       {scene==='loading' && (
         <div className="screen title-bg loading-screen" style={{ backgroundImage:'url(/backgrounds/title.jpg)' }}>
           <div className="bg-dim" />
-          <div className="logo logo-bbb">BUNTY’S<span className="sub">CATHARSIS</span></div>
+          <div className="logo logo-bbb">BUNTY’S CATHARSIS</div>
           <div className="load-bar"><div className="load-fill" style={{
             width: `${loadProgress.total ? Math.round(loadProgress.done/loadProgress.total*100) : 0}%` }} /></div>
           <div className="load-label">{loadProgress.label}</div>
@@ -288,7 +311,7 @@ export default function App(){
         <div className="screen title-bg"
              style={{ backgroundImage:'url(/backgrounds/title.jpg)' }}>
           <div className="bg-dim" />
-          <div className="logo logo-bbb">BUNTY’S<span className="sub">CATHARSIS</span></div>
+          <div className="logo logo-bbb">BUNTY’S CATHARSIS</div>
           <div className="title-menu">
             <button className="menu-btn" onClick={()=>setScene('story')}>STORY MODE</button>
             <button className="menu-btn" onClick={()=>setScene('select')}>FREE BATTLE</button>

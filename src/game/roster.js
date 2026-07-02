@@ -134,7 +134,7 @@ export const ROSTER = [
       rotY: 0,
       rotZ: 0,
       scale: 1,
-      yOffset: 0,
+      yOffset: -1.3,
       autoStand: true,
     },
     renderStyle: "textured",
@@ -168,7 +168,7 @@ export const ROSTER = [
       rotY: 0,
       rotZ: 0,
       scale: 1,
-      yOffset: -1.2,
+      yOffset: 0,
       autoStand: true,
     },
     renderStyle: "textured",
@@ -202,7 +202,20 @@ export const STAGES = [
   {
     id: "wasteland",
     label: "WASTELAND",
-    adjust: { floor: "bottom", floorY: 0, spread: 120 },
+    // Tuned for a custom model with a small house INTERIOR. Adjust these numbers
+    // to place the fighters exactly in the room:
+    //   spread  : LOWER = the model is scaled larger around the fighters (zoom in)
+    //   floorY  : raise(+)/lower(-) fighters onto the room's floor
+    //   offsetX/Z: slide the model so the interior is centered on the fighters
+    //   bounds  : how far fighters can walk left/right (keeps them inside the room)
+    adjust: {
+      floor: "bottom",
+      floorY: -27.2,
+      spread: 120,
+      offsetX: -3,
+      offsetZ: -5,
+      bounds: 14,
+    },
   },
   {
     id: "lava",
@@ -212,7 +225,7 @@ export const STAGES = [
   {
     id: "island",
     label: "GRASSY ISLE",
-    adjust: { floor: "bottom", floorY: -0.5, spread: 120 },
+    adjust: { floor: "bottom", floorY: 0, spread: 120 },
   },
 ];
 

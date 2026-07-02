@@ -66,14 +66,36 @@ export class World {
 
   /* --- particle fx --- */
   V(x,y,z){ return {x,y,z}; }
-  spawnAura(f){ const c=f.kiColor, n=f.transformed?3:1;
-    for(let k=0;k<n;k++){ const a=rand(0,TAU), r=rand(.3,.6);
-      this.particles.spawn(this.V(f.pos.x+Math.cos(a)*r, f.pos.y+rand(0,.4), f.pos.z+Math.sin(a)*r*.4),
-        [rand(-.4,.4),rand(2.5,4.5),rand(-.4,.4)], c, rand(.4,.8), rand(.4,.7), .9, 0); } }
+  spawnAura(f){
+    const c=f.kiColor;
+    const intensity = f.transformed ? 2 : 1;
+    // energy shroud: particles hug the body outline and streak UP like flames,
+    // flaring wider at the base and tapering as they rise (the "aura" look)
+    const cnt = f.state===ST.CHARGE ? 6*intensity : 3*intensity;
+    for(let k=0;k<cnt;k++){
+      const a=rand(0,TAU);
+      const baseR=rand(.25,.75);                 // hug close to the body
+      const h=rand(0, 2.2);                        // spawn along the body height
+      const px=f.pos.x+Math.cos(a)*baseR;
+      const py=f.pos.y+h*0.5;
+      const pz=f.pos.z+Math.sin(a)*baseR*.4;
+      // velocity: strong upward, slight inward converge (flame lick), fast
+      const up=rand(5,9)*(1+ (f.state===ST.CHARGE?0.5:0));
+      this.particles.spawn(this.V(px,py,pz),
+        [-Math.cos(a)*rand(.5,2), up, -Math.sin(a)*rand(.5,2)*.4],
+        c, rand(.5,1.1), rand(.35,.6), .82, 0);
+    }
+    // a couple of tall bright core streaks up the center for the flare tip
+    if(f.state===ST.CHARGE){
+      this.particles.spawn(this.V(f.pos.x+rand(-.2,.2), f.pos.y+rand(.4,1.2), f.pos.z),
+        [rand(-.6,.6), rand(9,13), rand(-.6,.6)], [1,1,1], rand(.4,.7), .3, .8, 0);
+    }
+  }
   spawnCharge(f){ const c=f.kiColor;
-    for(let k=0;k<4;k++){ const a=rand(0,TAU), r=rand(1.2,2);
-      this.particles.spawn(this.V(f.pos.x+Math.cos(a)*r, f.pos.y+rand(.2,2), f.pos.z+Math.sin(a)*r*.5),
-        [-Math.cos(a)*5, rand(2,5), -Math.sin(a)*5], c, rand(.5,.9), rand(.25,.4), .85, 0); } }
+    // inward-rushing motes that get pulled into the aura (energy gathering)
+    for(let k=0;k<5;k++){ const a=rand(0,TAU), r=rand(2.2,3.6);
+      this.particles.spawn(this.V(f.pos.x+Math.cos(a)*r, f.pos.y+rand(.2,2.4), f.pos.z+Math.sin(a)*r*.5),
+        [-Math.cos(a)*rand(7,11), rand(1,4), -Math.sin(a)*rand(7,11)*.5], c, rand(.4,.8), rand(.3,.5), .8, 0); } }
   spawnImpact(p, col, big){ const n=big?34:16;
     for(let k=0;k<n;k++){ const dx=rand(-1,1),dy=rand(-1,1),dz=rand(-1,1),l=Math.hypot(dx,dy,dz)||1,s=rand(6,big?20:12);
       this.particles.spawn({...p},[dx/l*s,dy/l*s,dz/l*s],col,rand(.3,big?1.1:.6),rand(.25,.5),.86,18); }
@@ -171,7 +193,7 @@ export class World {
     f.pos.x+=f.vel.x*dt; f.pos.y+=f.vel.y*dt;
     if(f.pos.y<=0){ f.pos.y=0; if(!f.grounded){ f.grounded=true; this.spawnImpact(this.V(f.pos.x,0,f.pos.z),[.7,.7,.8],false);
       if([ST.JUMP,ST.KNOCK,ST.AIR_ATK].includes(f.state)) f.enter(ST.IDLE); } f.vel.y=0; }
-    const B=46; if(Math.abs(f.pos.x)>B){ f.pos.x=Math.sign(f.pos.x)*B; f.vel.x*=-.3; }
+    const B=this.bounds||46; if(Math.abs(f.pos.x)>B){ f.pos.x=Math.sign(f.pos.x)*B; f.vel.x*=-.3; }
 
     switch(f.state){
       case ST.WALK: if(Math.abs(f.vel.x)<.4) f.enter(ST.IDLE); break;
